@@ -86,7 +86,7 @@ bool aes_128_cbc_decrypt(const uint8_t *in, int in_len, uint8_t *out, int *out_l
 
 
 
-int main(){// TODO
+int main(){
     // Init key, iv (suppose we have got key and iv)
     uint8_t key[16];
     uint8_t iv[16];
