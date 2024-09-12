@@ -1,4 +1,5 @@
 // RSA implement
+// note: 签名算法和加解密不能写在一个文件里，会出问题，分开分别单独写
 #include <iostream>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
