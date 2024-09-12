@@ -28,7 +28,7 @@ bool rsa_encrypt(uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t* out_len){
     if (ctx == nullptr) return false;
     // init ctx  
     if (EVP_PKEY_encrypt_init(ctx) <= 0) return false;
-
+    // padding
     if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) return false;
     // encrypt
     if (EVP_PKEY_encrypt(ctx, out, (size_t*)out_len, in, in_len) <= 0) return false;
@@ -53,7 +53,7 @@ bool rsa_decrypt(uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t *out_len){
     if (ctx == nullptr) return false;
     // init ctx  
     if (EVP_PKEY_decrypt_init(ctx) <= 0) return false;
-
+    // padding
     if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) return false;
     // decrypt
     if (EVP_PKEY_decrypt(ctx, out, (size_t*)out_len, in, in_len) <= 0) return false;
