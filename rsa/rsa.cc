@@ -6,28 +6,40 @@
 #include <cstring>
 #include <string.h>
 
+// PubK
+#define PUBLIC_KEY_FILE_NAME "keys/pubk.pem"
+// PriK
+#define PRIVATE_KEY_FILE_NAME "keys/prik.pem"
+
 // generate key
 bool generate_rsa(int bits){
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr);
+    if(ctx==nullptr) return false;
     EVP_PKEY *pkey = nullptr;
-    EVP_PKEY_keygen_init(ctx);
-    EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits);
-    EVP_PKEY_keygen(ctx, &pkey);
+
+    if(EVP_PKEY_keygen_init(ctx) != 1) return false;
+    if(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) != 1) return false;
+    if(EVP_PKEY_keygen(ctx, &pkey) != 1) return false;
 
     FILE *prif = nullptr, *pubf = nullptr;
 
     // generate private key
-    prif = fopen("./keys/rsa_prik.pem", "w");
-    PEM_write_PrivateKey(prif, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+    prif = fopen(PRIVATE_KEY_FILE_NAME, "w");
+    if (prif == nullptr) return false;
+    int ret = PEM_write_PrivateKey(prif, pkey, nullptr, nullptr, 0, nullptr, nullptr);
     fclose(prif);
+    if (ret != 1) return false;
 
     // generate public key
-    pubf = fopen("./keys/rsa_pubk.pem", "w");
-    PEM_write_PUBKEY(pubf, pkey);
+    pubf = fopen(PUBLIC_KEY_FILE_NAME, "w");
+    if (pubf == nullptr) return false;
+    ret = PEM_write_PUBKEY(pubf, pkey);
     fclose(pubf);
+    if (ret != 1) return false;
 
     EVP_PKEY_CTX_free(ctx); 
 
+    return true;
 }
 
 
@@ -36,24 +48,23 @@ bool generate_rsa(int bits){
 
 
 // encrypt function
-bool rsa_encrypt(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t* out_len){
+bool rsa_encrypt(const uint8_t* in, uint32_t in_len, uint8_t* out, size_t* out_len){
     // read public key
-    FILE* pubf = fopen("./keys/rsa_pubk.pem", "r");
+    FILE* pubf = fopen(PUBLIC_KEY_FILE_NAME, "r");
     EVP_PKEY * pubk = PEM_read_PUBKEY(pubf, nullptr, nullptr, nullptr);
     fclose(pubf);
+    if (pubk == nullptr) return false;
 
     // // public key bytes
     // int pbuk_len = EVP_PKEY_size(pubk);
 
     // create ctx with private key
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pubk, nullptr);
-
+    if (ctx == nullptr) return false;
     // init ctx  
-    EVP_PKEY_encrypt_init(ctx);
+    if (EVP_PKEY_encrypt_init(ctx) != 1) return false;
     // encrypt
-    size_t len = 0;
-    EVP_PKEY_encrypt(ctx, out, &len, in, in_len);
-    *out_len = len;
+    if (EVP_PKEY_encrypt(ctx, out, out_len, in, in_len) != 1) return false;
     // free ctx
     EVP_PKEY_CTX_free(ctx);
 
@@ -65,24 +76,29 @@ bool rsa_encrypt(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t* out
 
 
 // decrypt function
-bool rsa_decrypt(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t *out_len){
+bool rsa_decrypt(const uint8_t* in, uint32_t in_len, unsigned char* out, size_t *out_len){
     // read private key
-    FILE* prif = fopen("./keys/rsa_prik.pem", "r");
+    FILE* prif = fopen(PRIVATE_KEY_FILE_NAME, "r");
     EVP_PKEY * prik = PEM_read_PrivateKey(prif, nullptr, nullptr, nullptr);
     fclose(prif);
-
+    if (prik == nullptr) return false;
     // // private key bytes
     // int prik_len = EVP_PKEY_size(prik);
 
     // create ctx with private key
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(prik, nullptr);
-
+    if (ctx == nullptr) return false;
     // init ctx  
-    EVP_PKEY_decrypt_init(ctx);
+    if (EVP_PKEY_decrypt_init(ctx) != 1) return false;
+
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) return false;
+    
+    // if (EVP_PKEY_decrypt(ctx, nullptr, out_len, in, in_len) <= 0) return false;
+    // out = (unsigned char*)OPENSSL_malloc(*out_len);
+    // if (!out) return false;
     // decrypt
-    size_t len = 0;
-    EVP_PKEY_decrypt(ctx, out, &len, in, in_len);
-    *out_len = len;
+    if (EVP_PKEY_decrypt(ctx, out, out_len, in, in_len) <= 0) return false;
+
     // free ctx
     EVP_PKEY_CTX_free(ctx);
 
@@ -96,46 +112,46 @@ bool rsa_decrypt(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t *out
 // signature
 bool signature(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t* out_len){
     // read private key
-    FILE *prif = fopen("./keys/rsa_prik.pem", "r");
+    FILE *prif = fopen(PRIVATE_KEY_FILE_NAME, "r");
     EVP_PKEY *prik = PEM_read_PrivateKey(prif, nullptr, nullptr, nullptr);
     fclose(prif);
+    if (prik == nullptr) return false;
 
     // ctx
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == nullptr) return false;
     // init ctx
-    EVP_SignInit(ctx, EVP_sha256());
+    if (EVP_SignInit(ctx, EVP_sha256()) != 1) return false;
     // update
-    EVP_SignUpdate(ctx, in, in_len);
+    if (EVP_SignUpdate(ctx, in, in_len) != 1) return false;
     // final
-    uint32_t len = 0;
-    EVP_SignFinal(ctx, out, &len, prik);
-    *out_len = len;
+    if (EVP_SignFinal(ctx, out, out_len, prik) != 1) return false;
     // free
     EVP_MD_CTX_free(ctx);
     EVP_PKEY_free(prik);
     return true;
-}
+}   
 
 
 
 
 // vertification    
-bool vertify(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t *out_len){
+bool vertify(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t out_len){
     // read public key 
-    FILE *pubf = fopen("./keys/rsa_pubk.pem", "r");
+    FILE *pubf = fopen(PUBLIC_KEY_FILE_NAME, "r");
     EVP_PKEY * pubk = PEM_read_PUBKEY(pubf, nullptr, nullptr, nullptr);
     fclose(pubf);
+    if (pubk == nullptr) return false;
 
     // create ctx 
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == nullptr) return false;
     // ctx init
-    EVP_VerifyInit(ctx, EVP_sha256());
+    if (EVP_VerifyInit(ctx, EVP_sha256()) != 1) return false;
     // update
-    EVP_VerifyUpdate(ctx, in, in_len);
+    if (EVP_VerifyUpdate(ctx, in, in_len) != 1) return false;
     // final
-    uint32_t len = 0;
-    EVP_VerifyFinal(ctx, out, len, pubk);
-    *out_len = len;
+    if (EVP_VerifyFinal(ctx, out, out_len, pubk) != 1) return false;
     // free
     EVP_MD_CTX_free(ctx);
     EVP_PKEY_free(pubk);
@@ -147,17 +163,18 @@ bool vertify(const uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t *out_len
 // TODO
 
 
+
 int main(){
     // generate key
     generate_rsa(2048);
 
     // init
-    const char * text = "THIS IS A RSA TEST!";
+    const char * text = "RSA TEST!";
     uint32_t text_len = strlen(text);
     uint8_t cipher[256] = {0};
-    uint32_t cipher_len;
-    uint8_t plain[256] = {0};
-    uint32_t plain_len;
+    size_t cipher_len;
+    unsigned char plain[256] = {0};
+    size_t plain_len;
     uint8_t sign[256] = {0};
     uint32_t sign_len;
 
@@ -176,7 +193,7 @@ int main(){
     else  
         printf("sign: %s\n", sign);
     // vertify
-    if(!vertify((const uint8_t*)text, text_len, sign, &sign_len))
+    if(!vertify((const uint8_t*)text, text_len, sign, sign_len))
         printf("vertify failed\n");
     else
         printf("vertify success\n");
