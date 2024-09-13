@@ -1,4 +1,4 @@
-// AES-128 implement
+// Homework1: AES-128 implement
 #include <iostream>
 #include <openssl/evp.h>
 #include <cstring>
@@ -27,13 +27,13 @@ bool aes_128_cbc_encrypt(const uint8_t *in, int in_len, uint8_t *out, int *out_l
     const EVP_CIPHER *cipher = EVP_aes_128_cbc();
 
     // evp init
-    if (EVP_EncryptInit_ex(ctx, cipher, nullptr, key, iv) != 1) return false;
+    if (EVP_EncryptInit_ex(ctx, cipher, nullptr, key, iv) <= 0) return false;
 
     // evp update (middle computing process)
-    if (EVP_EncryptUpdate(ctx, out, &update_len, in, in_len) != 1) return false; 
+    if (EVP_EncryptUpdate(ctx, out, &update_len, in, in_len) <= 0) return false; 
 
     // evp final (compute last block and return final encrypt outcome)
-    if (EVP_EncryptFinal_ex(ctx, out+update_len, &final_len) != 1) return false;
+    if (EVP_EncryptFinal_ex(ctx, out+update_len, &final_len) <= 0) return false;
 
     // encrypt out length
     *out_len = update_len + final_len;
@@ -67,13 +67,13 @@ bool aes_128_cbc_decrypt(const uint8_t *in, int in_len, uint8_t *out, int *out_l
     const EVP_CIPHER *cipher = EVP_aes_128_cbc();
 
     // evp init
-    if (EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv) != 1) return false;
+    if (EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv) <= 0) return false;
 
     // evp update (middle computing process)
-    if (EVP_DecryptUpdate(ctx, out, &update_len, in, in_len) != 1) return false; 
+    if (EVP_DecryptUpdate(ctx, out, &update_len, in, in_len) <= 0) return false; 
 
     // evp final (compute last block and return final decrypt outcome)
-    if (EVP_DecryptFinal_ex(ctx, out+update_len, &final_len) != 1) return false;
+    if (EVP_DecryptFinal_ex(ctx, out+update_len, &final_len) <= 0) return false;
 
     // decrypt out length
     *out_len = update_len + final_len;
@@ -87,7 +87,7 @@ bool aes_128_cbc_decrypt(const uint8_t *in, int in_len, uint8_t *out, int *out_l
 
 
 int main(){
-    // Init key, iv (suppose we have got key and iv)
+    // Init key, iv (suppose I have got key and iv)
     uint8_t key[16];
     uint8_t iv[16];
     srand(time(0));

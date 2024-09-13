@@ -1,4 +1,4 @@
-// hash 
+// Homework1: hash 
 #include <iostream>
 #include <openssl/evp.h>
 #include <cstring>

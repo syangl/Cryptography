@@ -1,4 +1,4 @@
-// RSA implement
+// Homework1: RSA implement signature & vertify
 #include <iostream>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
