@@ -2,8 +2,11 @@
 #include <iostream>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <cstring>
 #include <string.h>
+#include <openssl/crypto.h>
+#include "rsa_gen.h"
 
 /**
  * From OpenSSL DH document's description:
@@ -19,6 +22,14 @@
 
 #define SHARE_KEY_SIZE 128
 #define PRIME_LENGTH 64 
+// DH PubK
+#define ALICE_PUBLIC_KEY_FILE_NAME "keys/Alice_DH_pubk.pem"
+// DH PriK
+#define ALICE_PRIVATE_KEY_FILE_NAME "keys/Alice_DH_prik.pem"
+// DH PubK
+#define BOB_PUBLIC_KEY_FILE_NAME "keys/Bob_DH_pubk.pem"
+// DH PriK
+#define BOB_PRIVATE_KEY_FILE_NAME "keys/Bob_DH_prik.pem"
 
 // 1.0 DH function (Following implement had been discarded by 3.0, it's a 1.0 version. I write here for my learning.)
 bool myDH_1_0(){
@@ -80,24 +91,88 @@ bool myDH_1_0(){
 
 // 3.0 DH
 bool myDH_3_0(){
-    // init
-    int priv_len = 2 * 112;
-    OSSL_PARAM params[3];
-    EVP_PKEY *pkey = nullptr;
-    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(nullptr, "DH", nullptr);
-    if (ctx == nullptr) return false;
+    // generate Alice and Bob pkey
+    EVP_PKEY_CTX *alice_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr);
+    EVP_PKEY *alice_pkey = nullptr;
+    if (!generate_DH(alice_ctx, alice_pkey, 0)) return false;
+    EVP_PKEY_CTX *bob_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr);
+    EVP_PKEY *bob_pkey = nullptr;
+    if (!generate_DH(bob_ctx, bob_pkey, 1)) return false;
 
-    // OpenSSL ofiicial document ref: https://docs.openssl.org/3.1/man3/OSSL_PARAM_int/#description 
-    params[0] = OSSL_PARAM_construct_utf8_string("group", "ffdhe2048", 0);
-    params[1] = OSSL_PARAM_construct_int("priv_len", &priv_len);
-    params[2] = OSSL_PARAM_construct_end();
+    printf("alice_pkey len: %d  bob_pkey len: %d\n", EVP_PKEY_size(alice_pkey), EVP_PKEY_size(bob_pkey));
 
-    if (EVP_PKEY_keygen_init(ctx) <= 0) return false;
-    if (EVP_PKEY_CTX_set_params(ctx, params) <= 0) return false;
-    if (EVP_PKEY_generate(ctx, &pkey) <= 0) return false;
+    // read Alice's pkey pair
+    // read private key
+    FILE* alice_prif = fopen(ALICE_PRIVATE_KEY_FILE_NAME, "r");
+    EVP_PKEY * alice_prik = PEM_read_PrivateKey(alice_prif, nullptr, nullptr, nullptr);
+    fclose(alice_prif);
+    if (alice_prik == nullptr) return false;
+    // private key bytes
+    printf("alice_prik: %d bytes\n", EVP_PKEY_size(alice_prik));
+    // read public key
+    FILE* alice_pubf = fopen(ALICE_PUBLIC_KEY_FILE_NAME, "r");
+    EVP_PKEY * alice_pubk = PEM_read_PUBKEY(alice_pubf, nullptr, nullptr, nullptr);
+    fclose(alice_pubf);
+    if (alice_pubk == nullptr) return false;
+    // // public key bytes
+    printf("alice_pubk: %d bytes\n", EVP_PKEY_size(alice_pubk));
+
+    // read Bob's pkey pair
+    // read private key
+    FILE* bob_prif = fopen(BOB_PRIVATE_KEY_FILE_NAME, "r");
+    EVP_PKEY * bob_prik = PEM_read_PrivateKey(bob_prif, nullptr, nullptr, nullptr);
+    fclose(bob_prif);
+    if (bob_prik == nullptr) return false;
+    // private key bytes
+    printf("bob_prik: %d bytes\n", EVP_PKEY_size(bob_prik));
+    // read public key
+    FILE* bob_pubf = fopen(BOB_PUBLIC_KEY_FILE_NAME, "r");
+    EVP_PKEY * bob_pubk = PEM_read_PUBKEY(bob_pubf, nullptr, nullptr, nullptr);
+    fclose(bob_pubf);
+    if (bob_pubk == nullptr) return false;
+    // public key bytes
+    printf("bob_pubk: %d bytes\n", EVP_PKEY_size(bob_pubk));
+
+    /* suppose Alice and Bob exchanged pubk */
+
+    // derive Alice share key(by using alice_prik and bob_pubk)
+    EVP_PKEY_CTX *alice_share_ctx = EVP_PKEY_CTX_new(alice_prik, NULL);
+    if (alice_share_ctx == nullptr) return false;
+    if (EVP_PKEY_derive_init(alice_share_ctx) <= 0) return false;
+    if (EVP_PKEY_derive_set_peer(alice_share_ctx, bob_pubk) <= 0) return false;
+    uint8_t * alice_sharekey;
+    size_t alice_sk_len = 0;
+    if (EVP_PKEY_derive(alice_share_ctx, nullptr, &alice_sk_len) <= 0) return false;
+    alice_sharekey = (uint8_t *)OPENSSL_malloc(alice_sk_len);
+    if (EVP_PKEY_derive(alice_share_ctx, alice_sharekey, &alice_sk_len) <= 0) return false;
+
+    // derive Bob share key(by using bob_prik and alice_pubk)
+    EVP_PKEY_CTX *bob_share_ctx = EVP_PKEY_CTX_new(bob_prik, NULL);
+    if (bob_share_ctx == nullptr) return false;
+    if (EVP_PKEY_derive_init(bob_share_ctx) <= 0) return false;
+    if (EVP_PKEY_derive_set_peer(bob_share_ctx, alice_pubk) <= 0) return false;
+    uint8_t * bob_sharekey;
+    size_t bob_sk_len = 0;
+    if (EVP_PKEY_derive(bob_share_ctx, nullptr, &bob_sk_len) <= 0) return false;
+    bob_sharekey = (uint8_t *)OPENSSL_malloc(bob_sk_len);
+    if (EVP_PKEY_derive(bob_share_ctx, bob_sharekey, &bob_sk_len) <= 0) return false;
+
+    // verify sharekey
+    if (!memcmp(bob_sharekey, alice_sharekey, alice_sk_len))
+        printf("DH success\n");
+    else    
+        printf("DH failed\n");
+
+
     // free 
-    EVP_PKEY_CTX_free(ctx);
-    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(alice_ctx);
+    EVP_PKEY_free(alice_pkey);
+    EVP_PKEY_free(alice_prik);
+    EVP_PKEY_free(alice_pubk);
+    EVP_PKEY_CTX_free(bob_ctx);
+    EVP_PKEY_free(bob_pkey);
+    EVP_PKEY_free(bob_prik);
+    EVP_PKEY_free(bob_pubk);
 
     return true;
 };
