@@ -5,11 +5,7 @@
 #include <openssl/pem.h>
 #include <cstring>
 #include <string.h>
-
-// PubK
-#define PUBLIC_KEY_FILE_NAME "keys/pubk.pem"
-// PriK
-#define PRIVATE_KEY_FILE_NAME "keys/prik.pem"
+#include "rsa_gen.h"
 
 // signature
 bool signature(uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t* out_len){
@@ -59,6 +55,9 @@ bool vertify(uint8_t* in, uint32_t in_len, uint8_t* out, uint32_t out_len){
 }
 
 int main(){
+    // key generate
+    generate_rsa(RSA_KEY_SIZE);
+    // init 
     const char *text = "THIS IS A RSA TEST!";
     uint32_t text_len = strlen(text);
     uint8_t cipher[512] = {0};

@@ -22,14 +22,6 @@
 
 #define SHARE_KEY_SIZE 128
 #define PRIME_LENGTH 64 
-// DH PubK
-#define ALICE_PUBLIC_KEY_FILE_NAME "keys/Alice_DH_pubk.pem"
-// DH PriK
-#define ALICE_PRIVATE_KEY_FILE_NAME "keys/Alice_DH_prik.pem"
-// DH PubK
-#define BOB_PUBLIC_KEY_FILE_NAME "keys/Bob_DH_pubk.pem"
-// DH PriK
-#define BOB_PRIVATE_KEY_FILE_NAME "keys/Bob_DH_prik.pem"
 
 // 1.0 DH function (Following implement had been discarded by 3.0, it's a 1.0 version. I write here for my learning.)
 bool myDH_1_0(){

@@ -10,6 +10,8 @@
 #include <cstring>
 #include <string.h>
 
+#define RSA_KEY_SIZE 2048
+
 // PubK
 #define PUBLIC_KEY_FILE_NAME "keys/pubk.pem"
 // PriK
@@ -23,6 +25,8 @@
 #define BOB_PUBLIC_KEY_FILE_NAME "keys/Bob_DH_pubk.pem"
 // DH PriK
 #define BOB_PRIVATE_KEY_FILE_NAME "keys/Bob_DH_prik.pem"
+
+
 
 // generate key
 bool generate_rsa(int bits){
